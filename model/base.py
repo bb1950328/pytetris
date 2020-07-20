@@ -4,23 +4,35 @@ from typing import Tuple
 
 
 class Color(object):
+    PURPLE = None
+    YELLOW = None
+    ORANGE = None
+    LIGHT_BLUE = None
     RED = None
     BLUE = None
     GREEN = None
     name: str
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, hexcode: str):
         self.name = name
+        self._hexcode = hexcode
 
     @property
     def onechar(self) -> str:
         return self.name[0]
 
+    @property
+    def hexcode(self):
+        return self._hexcode
 
-# todo make this more elegant
-Color.RED = Color("red")
-Color.BLUE = Color("blue")
-Color.GREEN = Color("green")
+
+Color.PURPLE = Color("purple", "##FF00FF")
+Color.YELLOW = Color("yellow", "##FFFF00")
+Color.ORANGE = Color("orange", "##FF6300")
+Color.LIGHT_BLUE = Color("lightblue", "#00FFFF")
+Color.RED = Color("red", "#FF0000")
+Color.BLUE = Color("blue", "#0000FF")
+Color.GREEN = Color("green", "#00FF00")
 
 
 class MatrixObject(object):
@@ -37,7 +49,6 @@ class MatrixObject(object):
         rows: List[str] = string.splitlines(keepends=False)
         width = max(len(r) for r in rows)
         mo = MatrixObject(width, len(rows))
-        # todo parse string with .isspace() and write to matrix
         for y, ro in enumerate(rows):
             for x, bl in enumerate(ro):
                 mo[x, y] = None if bl.isspace() else color
@@ -69,3 +80,9 @@ class MatrixObject(object):
         x, y = key
         self._check_xy_bounds(x, y)
         return self._matrix[y][x]
+
+    def rotate_clockwise(self):
+        self._matrix = [list(row) for row in zip(*self._matrix[::-1])]
+
+    def rotate_counterclockwise(self):
+        self._matrix = [list(row) for row in zip(*self._matrix)][::-1]
