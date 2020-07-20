@@ -1,8 +1,19 @@
+from typing import Optional
+
 from model.base import Color
 from model.base import MatrixObject
 
 
 class Tetromino(object):
+    I = None
+    J = None
+    L = None
+    O = None
+    S = None
+    T = None
+    Z = None
+    ALL = None
+
     def __init__(self, shape: MatrixObject):
         self._shape = shape
 

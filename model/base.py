@@ -25,6 +25,11 @@ class Color(object):
     def hexcode(self):
         return self._hexcode
 
+    @property
+    def rgb(self):
+        stripped = self._hexcode.lstrip('#')
+        return tuple(int(stripped[i:i + 2], 16) for i in (0, 2, 4))
+
 
 Color.PURPLE = Color("purple", "##FF00FF")
 Color.YELLOW = Color("yellow", "##FFFF00")
@@ -52,6 +57,7 @@ class MatrixObject(object):
         for y, ro in enumerate(rows):
             for x, bl in enumerate(ro):
                 mo[x, y] = None if bl.isspace() else color
+        return mo
 
     @property
     def width(self):
@@ -68,8 +74,15 @@ class MatrixObject(object):
             raise ValueError(f"x (={x}) must be smaller than width (={self.width})")
         elif y < 0:
             raise ValueError(f"y (={y}) must not be negative")
-        elif x >= self.height:
+        elif y >= self.height:
             raise ValueError(f"y (={y}) must be smaller than height (={self.height})")
+
+    def are_xy_valid(self, x: int, y: int) -> bool:
+        try:
+            self._check_xy_bounds(x, y)
+            return True
+        except ValueError:
+            return False
 
     def __setitem__(self, key: Tuple[int, int], value: Color):
         x, y = key
@@ -86,3 +99,11 @@ class MatrixObject(object):
 
     def rotate_counterclockwise(self):
         self._matrix = [list(row) for row in zip(*self._matrix)][::-1]
+
+    def all_coords(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                yield x, y
+
+    def all_colored_coords(self):
+        return filter(lambda xy: self[xy] is not None, self.all_coords())
