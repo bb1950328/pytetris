@@ -1,17 +1,22 @@
 import ctypes
 import os
 import time
+from typing import List
 
 import pygame
 
 import const
 from model.game import Game
 
+SCALE = 0.5
+
 if os.name == 'nt':
-    SCALE = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+    SCALE *= ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
     ctypes.windll.user32.SetProcessDPIAware()
 else:
-    SCALE = 1
+    SCALE *= 1
+
+const.scale(SCALE)
 
 
 def sc(*args):
@@ -24,10 +29,13 @@ class PygameView(object):
         self.width = const.BOARD_WIDTH * const.BOARD_TILE_PX + 2 * const.SIDEBAR_WIDTH_PX
         self.game = game
         self.screen = None
+        self.scheduler = TickScheduler()
 
     def start(self):
         pygame.init()
-        self.screen = pygame.display.set_mode(sc(self.width, self.height))
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        self.scheduler.add_task(20, self.game.update_tetromino_fall)
+        self.scheduler.add_task(1, self.draw_board)
 
     def run(self):
         running = True
@@ -37,8 +45,7 @@ class PygameView(object):
                     print(event)
                 if event.type == pygame.QUIT:
                     running = False
-            self.draw_board()
-            self.game.update_tetromino_fall()
+            self.scheduler.run()
             time.sleep(0.2)
         self.exit()
 
@@ -57,3 +64,36 @@ class PygameView(object):
 
     def exit(self):
         pygame.quit()
+
+
+class TickScheduler(object):
+    class Task(object):
+        func: callable
+        count: int
+        args: tuple
+        kwargs: dict
+
+        def __init__(self, count, func, *args, **kwargs):
+            self.count = count
+            self.func = func
+            self.args = args
+            self.kwargs = kwargs
+
+        def call(self):
+            self.func(*self.args, **self.kwargs)
+
+    def __init__(self):
+        self.tasks = []
+        self.counters: List[int] = [0]
+
+    def add_task(self, count, func, *args, **kwargs):
+        self.tasks.append(TickScheduler.Task(count, func, *args, **kwargs))
+        self.counters.append(0)
+
+    def run(self):
+        for i, task in enumerate(self.tasks):
+            c = self.counters[i] + 1
+            if c > task.count:
+                task.call()
+                c = 0
+            self.counters[i] = c

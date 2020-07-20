@@ -3,7 +3,6 @@ import random
 from typing import Deque
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import const
 from model.base import MatrixObject
@@ -43,9 +42,9 @@ class Game(object):
         else:
             at_x, at_y = self.active_tetromino_pos
             for tx, ty in at.shape.all_colored_coords():
-                if self.board[at_x + tx, at_y + 1 + ty] is not None or at_y + ty == const.BOARD_HEIGHT - 1:
+                if at_y + ty == const.BOARD_HEIGHT - 1 or self.board[at_x + tx, at_y + 1 + ty] is not None:
                     if self.tetromino_last_step:
-                        self.freeze_active_tetromino()
+                        self._freeze_active_tetromino()
                     else:
                         self.tetromino_last_step = True
                     break
@@ -53,8 +52,10 @@ class Game(object):
                 self.tetromino_last_step = False
                 self.active_tetromino_pos[1] += 1
 
-    def freeze_active_tetromino(self):
+    def _freeze_active_tetromino(self):
         at = self.tetromino_queue.popleft()
         at_x, at_y = self.active_tetromino_pos
         for tx, ty in at.shape.all_colored_coords():
             self.board[at_x + tx, at_y + ty] = at.shape[tx, ty]
+        self.active_tetromino_pos = None
+        self._fill_tetromino_queue()
