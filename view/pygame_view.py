@@ -7,6 +7,7 @@ from typing import Optional
 import pygame
 
 import const
+from model.base import MatrixObject
 from model.game import Game
 
 SCALE = 0.5
@@ -41,6 +42,7 @@ class PygameView(object):
     def start(self):
         global FONT32, FONT72
         pygame.init()
+        pygame.display.set_caption("pytetris")
         FONT32 = pygame.font.SysFont(None, sc(32))
         FONT72 = pygame.font.SysFont(None, sc(72))
         self.screen = pygame.display.set_mode((self.width, self.height))
@@ -98,6 +100,7 @@ class PygameView(object):
     def redraw_screen(self):
         self.screen.fill((0, 0, 0))
         board_left = self.width // 2 - (const.BOARD_WIDTH * const.BOARD_TILE_PX // 2)
+        board_right = self.width // 2 + (const.BOARD_WIDTH * const.BOARD_TILE_PX // 2)
         for xx in range(const.BOARD_WIDTH):
             for yy in range(const.BOARD_HEIGHT):
                 rect = (board_left + xx * const.BOARD_TILE_PX, yy * const.BOARD_TILE_PX,
@@ -107,15 +110,30 @@ class PygameView(object):
                 if board_color is not None:
                     pygame.draw.rect(self.screen, board_color.rgb, rect)
 
-        fimg = FONT32.render("Rows", True, (255, 255, 255))
+        fimg = FONT32.render("Rows:", True, (255, 255, 255))
         y1 = round(self.height * 0.8)
         self.screen.blit(fimg, (board_left // 2 - fimg.get_rect().width // 2, y1))
 
-        y2 = y1 + fimg.get_rect().height
+        y2 = y1 + fimg.get_rect().height + sc(8)
         fimg = FONT72.render(str(self.game.rows), True, (255, 255, 255))
         self.screen.blit(fimg, (board_left // 2 - fimg.get_rect().width // 2, y2))
 
+        right_sidebar_middle = (board_right + self.width) // 2
+
+        fimg = FONT32.render("Next:", True, (255, 255, 255))
+        y1 = self.height // 10
+        self.screen.blit(fimg, (right_sidebar_middle - fimg.get_rect().width // 2, y1))
+        y2 = y1 + fimg.get_rect().height + sc(8)
+        self.draw_matrix_object(self.game.tetromino_queue[1].shape, right_sidebar_middle, y2)
+
         pygame.display.update()
+
+    def draw_matrix_object(self, obj: MatrixObject, x_center: int, y_top: int) -> None:
+        x_left = round(x_center - const.BOARD_TILE_PX * obj.width / 2)
+        for x, y in obj.all_colored_coords():
+            pygame.draw.rect(self.screen, obj[x, y].rgb,
+                             (x_left + x * const.BOARD_TILE_PX, y_top + y * const.BOARD_TILE_PX,
+                              const.BOARD_TILE_PX, const.BOARD_TILE_PX))
 
     def exit(self):
         pygame.quit()
