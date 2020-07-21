@@ -84,12 +84,12 @@ class MatrixObject(object):
         except ValueError:
             return False
 
-    def __setitem__(self, key: Tuple[int, int], value: Color):
+    def __setitem__(self, key: Tuple[int, int], value: Optional[Color]):
         x, y = key
         self._check_xy_bounds(x, y)
         self._matrix[y][x] = value
 
-    def __getitem__(self, key: Tuple[int, int]) -> Color:
+    def __getitem__(self, key: Tuple[int, int]) -> Optional[Color]:
         x, y = key
         self._check_xy_bounds(x, y)
         return self._matrix[y][x]

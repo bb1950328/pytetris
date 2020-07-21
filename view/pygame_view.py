@@ -2,6 +2,7 @@ import ctypes
 import os
 import time
 from typing import List
+from typing import Optional
 
 import pygame
 
@@ -9,6 +10,7 @@ import const
 from model.game import Game
 
 SCALE = 0.5
+FPS = 100
 
 if os.name == 'nt':
     SCALE *= ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
@@ -23,54 +25,96 @@ def sc(*args):
     return tuple(round(a * SCALE) for a in args) if len(args) != 1 else round(args[0] * SCALE)
 
 
+FONT32: Optional[pygame.font.SysFont] = None
+FONT72: Optional[pygame.font.SysFont] = None
+
+
 class PygameView(object):
     def __init__(self, game: Game):
         self.height = const.BOARD_HEIGHT * const.BOARD_TILE_PX
         self.width = const.BOARD_WIDTH * const.BOARD_TILE_PX + 2 * const.SIDEBAR_WIDTH_PX
         self.game = game
         self.screen = None
+        self.pressed_keys = {}
         self.scheduler = TickScheduler()
 
     def start(self):
+        global FONT32, FONT72
         pygame.init()
+        FONT32 = pygame.font.SysFont(None, sc(32))
+        FONT72 = pygame.font.SysFont(None, sc(72))
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.scheduler.add_task(20, self.game.update_tetromino_fall)
-        self.scheduler.add_task(1, self.draw_board)
+        self.scheduler.add_task(1, self.redraw_screen)
+        self.scheduler.add_task(4, self.check_repeating_keys)
 
     def run(self):
         running = True
+
         while running:
+            start = time.perf_counter()
             for event in pygame.event.get():
                 if event.type != pygame.MOUSEMOTION:
                     print(event)
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.KEYDOWN:
+                    self.pressed_keys[event.key] = 0
                     if event.key == pygame.K_LEFT:
                         self.game.input_move_left()
                     elif event.key == pygame.K_RIGHT:
                         self.game.input_move_right()
+                    elif event.key == pygame.K_UP:
+                        self.game.input_turn_clockwise()
                     elif event.key == pygame.K_a:
                         self.game.input_turn_clockwise()
                     elif event.key == pygame.K_d:
-                        self.game.input_turn_clockwise()
+                        self.game.input_turn_counterclockwise()
                     elif event.key == pygame.K_ESCAPE:
                         running = False
+                if event.type == pygame.KEYUP:
+                    del self.pressed_keys[event.key]
+
             self.scheduler.run()
-            time.sleep(0.02)
+            loop_time = time.perf_counter() - start
+            # print(f"loop time: {round(loop_time, 3)}s")
+            time.sleep(max(0, 1 / FPS - loop_time))
         self.exit()
 
-    def draw_board(self):
+    def check_repeating_keys(self):
+        if pygame.K_DOWN in self.pressed_keys:
+            self.game.input_move_down()
+        if pygame.K_LEFT in self.pressed_keys:
+            if self.pressed_keys[pygame.K_LEFT] >= 10:
+                self.game.input_move_left()
+            else:
+                self.pressed_keys[pygame.K_LEFT] += 1
+        if pygame.K_RIGHT in self.pressed_keys:
+            if self.pressed_keys[pygame.K_RIGHT] >= 10:
+                self.game.input_move_right()
+            else:
+                self.pressed_keys[pygame.K_RIGHT] += 1
+
+    def redraw_screen(self):
         self.screen.fill((0, 0, 0))
-        x1 = self.width // 2 - (const.BOARD_WIDTH * const.BOARD_TILE_PX // 2)
+        board_left = self.width // 2 - (const.BOARD_WIDTH * const.BOARD_TILE_PX // 2)
         for xx in range(const.BOARD_WIDTH):
             for yy in range(const.BOARD_HEIGHT):
-                rect = (x1 + xx * const.BOARD_TILE_PX, yy * const.BOARD_TILE_PX,
+                rect = (board_left + xx * const.BOARD_TILE_PX, yy * const.BOARD_TILE_PX,
                         const.BOARD_TILE_PX, const.BOARD_TILE_PX)
                 pygame.draw.rect(self.screen, (25, 25, 25), rect, 2)
                 board_color = self.game.get_color_at(xx, yy)
                 if board_color is not None:
                     pygame.draw.rect(self.screen, board_color.rgb, rect)
+
+        fimg = FONT32.render("Rows", True, (255, 255, 255))
+        y1 = round(self.height * 0.8)
+        self.screen.blit(fimg, (board_left // 2 - fimg.get_rect().width // 2, y1))
+
+        y2 = y1 + fimg.get_rect().height
+        fimg = FONT72.render(str(self.game.rows), True, (255, 255, 255))
+        self.screen.blit(fimg, (board_left // 2 - fimg.get_rect().width // 2, y2))
+
         pygame.display.update()
 
     def exit(self):
