@@ -1,4 +1,5 @@
 import collections
+import copy
 import random
 from typing import Deque
 from typing import List
@@ -19,7 +20,7 @@ class Game(object):
 
     def _fill_tetromino_queue(self):
         while len(self.tetromino_queue) < 10:
-            self.tetromino_queue.append(random.choice(Tetromino.ALL))
+            self.tetromino_queue.append(copy.deepcopy(random.choice(Tetromino.ALL)))
 
     def get_color_at(self, x, y):
         board_color = self.board[x, y]
@@ -40,17 +41,23 @@ class Game(object):
         if self.active_tetromino_pos is None:
             self.active_tetromino_pos = [const.BOARD_WIDTH // 2 - at.shape.width // 2, 0]
         else:
-            at_x, at_y = self.active_tetromino_pos
-            for tx, ty in at.shape.all_colored_coords():
-                if at_y + ty == const.BOARD_HEIGHT - 1 or self.board[at_x + tx, at_y + 1 + ty] is not None:
-                    if self.tetromino_last_step:
-                        self._freeze_active_tetromino()
-                    else:
-                        self.tetromino_last_step = True
-                    break
+            if self.is_active_tetromino_colliding(0, 1):
+                if self.tetromino_last_step:
+                    self._freeze_active_tetromino()
+                else:
+                    self.tetromino_last_step = True
             else:
                 self.tetromino_last_step = False
                 self.active_tetromino_pos[1] += 1
+
+    def is_active_tetromino_colliding(self, delta_x: int, delta_y: int) -> bool:
+        at_x, at_y = self.active_tetromino_pos
+        for tx, ty in self.tetromino_queue[0].shape.all_colored_coords():
+            if at_y + ty >= const.BOARD_HEIGHT - 1 \
+                    or not (0 <= at_x + tx + delta_x < const.BOARD_WIDTH) \
+                    or self.board[at_x + delta_x + tx, at_y + delta_y + ty] is not None:
+                return True
+        return False
 
     def _freeze_active_tetromino(self):
         at = self.tetromino_queue.popleft()
@@ -59,3 +66,17 @@ class Game(object):
             self.board[at_x + tx, at_y + ty] = at.shape[tx, ty]
         self.active_tetromino_pos = None
         self._fill_tetromino_queue()
+
+    def input_move_left(self):
+        if not self.is_active_tetromino_colliding(-1, 0):
+            self.active_tetromino_pos[0] -= 1
+
+    def input_move_right(self):
+        if not self.is_active_tetromino_colliding(1, 0):
+            self.active_tetromino_pos[0] += 1
+
+    def input_turn_clockwise(self):
+        self.tetromino_queue[0].shape.rotate_clockwise()
+
+    def input_turn_counterclockwise(self):
+        self.tetromino_queue[0].shape.rotate_counterclockwise()

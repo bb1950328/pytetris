@@ -45,8 +45,19 @@ class PygameView(object):
                     print(event)
                 if event.type == pygame.QUIT:
                     running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        self.game.input_move_left()
+                    elif event.key == pygame.K_RIGHT:
+                        self.game.input_move_right()
+                    elif event.key == pygame.K_a:
+                        self.game.input_turn_clockwise()
+                    elif event.key == pygame.K_d:
+                        self.game.input_turn_clockwise()
+                    elif event.key == pygame.K_ESCAPE:
+                        running = False
             self.scheduler.run()
-            time.sleep(0.2)
+            time.sleep(0.02)
         self.exit()
 
     def draw_board(self):
